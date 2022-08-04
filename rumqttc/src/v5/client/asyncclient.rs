@@ -7,7 +7,8 @@ use crate::v5::{
     client::get_ack_req,
     outgoing_buf::OutgoingBuf,
     packet::{Publish, Subscribe, SubscribeFilter, Unsubscribe},
-    ClientError, EventLoop, MqttOptions, QoS, Request, SubscribeProperties, UnsubscribeProperties,
+    ClientError, EventLoop, MqttOptions, QoS, Request,
+    SubscribeProperties, UnsubscribeProperties, PublishProperties,
 };
 
 /// `AsyncClient` to communicate with MQTT `Eventloop`
@@ -39,6 +40,8 @@ impl AsyncClient {
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
@@ -47,6 +50,16 @@ impl AsyncClient {
     {
         let mut publish = Publish::new(topic, qos, payload);
         publish.retain = retain;
+        publish.properties = Some(PublishProperties {
+            payload_format_indicator: None,
+            message_expiry_interval: None,
+            topic_alias: None,
+            response_topic,
+            correlation_data: None,
+            user_properties: user_props,
+            subscription_identifiers: vec![],
+            content_type: None,
+        });
         let pkid = if qos != QoS::AtMostOnce {
             let mut request_buf = self.outgoing_buf.lock().unwrap();
             if request_buf.buf.len() == request_buf.capacity {
@@ -69,6 +82,8 @@ impl AsyncClient {
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
@@ -77,6 +92,16 @@ impl AsyncClient {
     {
         let mut publish = Publish::new(topic, qos, payload);
         publish.retain = retain;
+        publish.properties = Some(PublishProperties {
+            payload_format_indicator: None,
+            message_expiry_interval: None,
+            topic_alias: None,
+            response_topic,
+            correlation_data: None,
+            user_properties: user_props,
+            subscription_identifiers: vec![],
+            content_type: None,
+        });
         let pkid = if qos != QoS::AtMostOnce {
             let mut request_buf = self.outgoing_buf.lock().unwrap();
             if request_buf.buf.len() == request_buf.capacity {

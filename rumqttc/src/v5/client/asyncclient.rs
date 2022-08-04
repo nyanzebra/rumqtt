@@ -11,7 +11,7 @@ use crate::v5::{
     outgoing_buf::OutgoingBuf,
     packet::{Publish, Subscribe, SubscribeFilter, Unsubscribe},
     ClientError, ConnectionError, EventLoop, MqttOptions, Notifier, QoS, Request,
-    SubscribeProperties, UnsubscribeProperties,
+    SubscribeProperties, UnsubscribeProperties, PublishProperties,
 };
 
 /// `AsyncClient` to communicate with an MQTT `Eventloop`
@@ -84,9 +84,12 @@ impl AsyncClient {
     /// Sends a MQTT Publish to the eventloop
     pub async fn publish<S, V>(
         &self,
+
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
@@ -95,6 +98,16 @@ impl AsyncClient {
     {
         let mut publish = Publish::new(topic, qos, payload);
         publish.retain = retain;
+        publish.properties = Some(PublishProperties {
+            payload_format_indicator: None,
+            message_expiry_interval: None,
+            topic_alias: None,
+            response_topic,
+            correlation_data: None,
+            user_properties: user_props,
+            subscription_identifiers: vec![],
+            content_type: None,
+        });
         let pkid = self.make_request(Request::Publish(publish), qos != QoS::AtMostOnce)?;
         self.notify_async().await?;
         Ok(pkid)
@@ -106,6 +119,8 @@ impl AsyncClient {
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
@@ -114,6 +129,16 @@ impl AsyncClient {
     {
         let mut publish = Publish::new(topic, qos, payload);
         publish.retain = retain;
+        publish.properties = Some(PublishProperties {
+            payload_format_indicator: None,
+            message_expiry_interval: None,
+            topic_alias: None,
+            response_topic,
+            correlation_data: None,
+            user_properties: user_props,
+            subscription_identifiers: vec![],
+            content_type: None,
+        });
         let pkid = self.make_request(Request::Publish(publish), qos != QoS::AtMostOnce)?;
         self.try_notify()?;
         Ok(pkid)

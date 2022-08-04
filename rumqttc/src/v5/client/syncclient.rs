@@ -5,7 +5,8 @@ use tokio::runtime;
 use crate::v5::{
     client::get_ack_req,
     packet::{Publish, Subscribe, SubscribeFilter, Unsubscribe},
-    AsyncClient, ClientError, Connection, ConnectionError, MqttOptions, Notifier, QoS, Request,
+    AsyncClient, ClientError, Connection, ConnectionError, MqttOptions, Notifier,
+    PublishProperties, QoS, Request,
 };
 
 /// `Client` to communicate with MQTT eventloop `Connection`.
@@ -61,6 +62,8 @@ impl Client {
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
@@ -69,6 +72,16 @@ impl Client {
     {
         let mut publish = Publish::new(topic, qos, payload);
         publish.retain = retain;
+        publish.properties = Some(PublishProperties {
+            payload_format_indicator: None,
+            message_expiry_interval: None,
+            topic_alias: None,
+            response_topic,
+            correlation_data: None,
+            user_properties: user_props,
+            subscription_identifiers: vec![],
+            content_type: None,
+        });
         let pkid = if qos != QoS::AtMostOnce {
             let mut request_buf = self.client.outgoing_buf.lock().unwrap();
             if request_buf.buf.len() == request_buf.capacity {
@@ -90,13 +103,16 @@ impl Client {
         topic: S,
         qos: QoS,
         retain: bool,
+        response_topic: Option<String>,
+        user_props: Vec<(String, String)>,
         payload: V,
     ) -> Result<u16, ClientError>
     where
         S: Into<String>,
         V: Into<Vec<u8>>,
     {
-        self.client.try_publish(topic, qos, retain, payload)
+        self.client
+            .try_publish(topic, qos, retain, response_topic, user_props, payload)
     }
 
     /// Sends a MQTT PubAck to the eventloop. Only needed in if `manual_acks` flag is set.
